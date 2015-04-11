@@ -20,7 +20,6 @@ namespace Dasein
 		void Close()
 		{
 			std::unique_lock<std::mutex> lock(Locker);
-			Buffer.empty();
 			mClosed = true;
 		}
 
