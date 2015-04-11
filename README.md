@@ -2,6 +2,7 @@
 golang channel in c++11
 
 How to use?
+
 include "Channel.h"
 
 blocking calls
