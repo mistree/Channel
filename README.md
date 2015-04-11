@@ -10,6 +10,8 @@ Channel<int> ch;
 int i = 0;
 
 ch<<i; // sending i through ch
+
+
 i<<ch; // receiving i from ch
 
 non-blocking calls
