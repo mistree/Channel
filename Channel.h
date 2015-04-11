@@ -20,7 +20,7 @@ public:
 		return true;
 	}
 
-	friend bool operator << (Channel<Item>& Ch, Item In) 
+	friend bool operator << (Channel<Item>& Ch, Item& In) 
 	{
 		std::unique_lock<std::mutex> lock(Ch.Locker);
 		Ch.Buffer.push(In);
@@ -41,7 +41,7 @@ public:
 		return true;
 	}
 
-	friend bool operator >> (Item In, Channel<Item>& Ch) 
+	friend bool operator >> (Item& In, Channel<Item>& Ch) 
 	{
 		std::unique_lock<std::mutex> lock(Ch.Locker, defer_lock);
 		if (!lock.try_lock())
