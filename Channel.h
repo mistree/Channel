@@ -21,8 +21,8 @@ namespace Dasein
 		
 
 	public:
-		Channel(unsigned int SizeTimes2) 
-			: MaxPointer(SizeTimes2 * 2 - 1), Buffer(new Item[SizeTimes2 * 2]), Size(SizeTimes2*2)
+		Channel(unsigned int Power2) 
+			: MaxPointer((1 << Power2) - 1), Buffer(new Item[(1 << Power2)]), Size((1 << Power2))
 		{};
 		~Channel()
 		{
