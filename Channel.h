@@ -21,8 +21,8 @@ namespace Dasein
 		
 
 	public:
-		Channel(unsigned int Size) 
-			: MaxPointer(Size - 1), Buffer(new Item[Size]), Size(Size)
+		Channel(unsigned int SizeTimes2) 
+			: MaxPointer(SizeTimes2 * 2 - 1), Buffer(new Item[SizeTimes2 * 2]), Size(SizeTimes2*2)
 		{};
 		~Channel()
 		{
@@ -47,7 +47,7 @@ namespace Dasein
 			if (!Ch.Reading.try_lock())
 				return false;
 			Out = Ch.Buffer[Ch.RPointer];
-			Ch.RPointer = (Ch.RPointer == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;		
+			Ch.RPointer = (Ch.RPointer + 1)&Ch.MaxPointer;
 			Ch.Reading.unlock();
 			Ch.Elements--;
 			return true;
@@ -60,7 +60,7 @@ namespace Dasein
 			if (!Ch.Writing.try_lock())
 				return false;
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
 			Ch.Writing.unlock();
 			Ch.Elements++;
 			return true;
@@ -73,7 +73,7 @@ namespace Dasein
 			if (!Ch.Writing.try_lock())
 				return false;
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
 			Ch.Writing.unlock();
 			Ch.Elements++;
 			return true;
@@ -86,7 +86,7 @@ namespace Dasein
 			if (Ch.Elements == 0) return false;
 			while (!Ch.Reading.try_lock());
 			Out = Ch.Buffer[Ch.RPointer];
-			Ch.RPointer = (Ch.RPointer == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
+			Ch.RPointer = (Ch.RPointer + 1)&Ch.MaxPointer;
 			Ch.Reading.unlock();
 			Ch.Elements--;
 			return true;
@@ -98,7 +98,7 @@ namespace Dasein
 			if (Ch.Elements == Ch.Size) return false;
 			while (!Ch.Writing.try_lock());
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
 			Ch.Writing.unlock();
 			Ch.Elements++;
 			return true;
@@ -110,7 +110,7 @@ namespace Dasein
 			if (Ch.Elements == Ch.Size) return false;
 			while (!Ch.Writing.try_lock());
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
 			Ch.Writing.unlock();
 			Ch.Elements++;
 			return true;
