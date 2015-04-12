@@ -44,8 +44,7 @@ namespace Dasein
 		{
 			// return if empty
 			if (Ch.Elements == 0) return false;
-			if (!Ch.Reading.try_lock())
-				return false;
+			if (!Ch.Reading.try_lock()) return false;
 			Out = Ch.Buffer[Ch.RPointer];
 			Ch.RPointer = (Ch.RPointer + 1)&Ch.MaxPointer;
 			Ch.Reading.unlock();
@@ -57,8 +56,7 @@ namespace Dasein
 		{
 			// return if full
 			if (Ch.Elements == Ch.Size) return false;
-			if (!Ch.Writing.try_lock())
-				return false;
+			if (!Ch.Writing.try_lock()) return false;
 			Ch.Buffer[Ch.WPointer] = In;
 			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
 			Ch.Writing.unlock();
@@ -70,8 +68,7 @@ namespace Dasein
 		{
 			// return if full
 			if (Ch.Elements == Ch.Size) return false;
-			if (!Ch.Writing.try_lock())
-				return false;
+			if (!Ch.Writing.try_lock()) return false;
 			Ch.Buffer[Ch.WPointer] = In;
 			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
 			Ch.Writing.unlock();
