@@ -10,18 +10,18 @@ namespace Dasein
 	class Channel
 	{
 	private:
-		const int MaxPointer;
+		const unsigned int MaxPointer;
 		Item* Buffer;
-		std::atomic<int> RPointer = 0;
-		std::atomic<int> WPointer = 0;
+		std::atomic<unsigned int> RPointer = 0;
+		std::atomic<unsigned int> WPointer = 0;
 		std::atomic<bool> LastOperation = true; // true read, false write
 		std::mutex Reading;
 		std::mutex Writing;
 
 	public:
-		Channel(int Size): MaxPointer(Size - 1)
+		Channel(unsigned int Size): MaxPointer(Size - 1)
 		{
-			Buffer = new Item[Size + 1];
+			Buffer = new Item[Size];
 		};
 		~Channel()
 		{
@@ -46,7 +46,7 @@ namespace Dasein
 				return false;
 			Ch.LastOperation = true;
 			Out = Ch.Buffer[Ch.RPointer];
-			Ch.RPointer = (Ch.RPointer + 1 == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
+			Ch.RPointer = (Ch.RPointer == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
 			Ch.Reading.unlock();
 			return true;
 		}
@@ -58,7 +58,7 @@ namespace Dasein
 				return false;
 			Ch.LastOperation = false;
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
 			Ch.Writing.unlock();
 			return true;
 		}
@@ -70,7 +70,7 @@ namespace Dasein
 				return false;
 			Ch.LastOperation = false;
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
 			Ch.Writing.unlock();
 			return true;
 		}
@@ -83,7 +83,7 @@ namespace Dasein
 
 			Ch.LastOperation = true;
 			Out = Ch.Buffer[Ch.RPointer];
-			Ch.RPointer = (Ch.RPointer + 1 == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
+			Ch.RPointer = (Ch.RPointer == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
 			Ch.Reading.unlock();
 			return true;
 		}
@@ -95,7 +95,7 @@ namespace Dasein
 
 			Ch.LastOperation = false;
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
 			Ch.Writing.unlock();
 			return true;
 		}
@@ -107,7 +107,7 @@ namespace Dasein
 
 			Ch.LastOperation = false;
 			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.WPointer = (Ch.WPointer == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
 			Ch.Writing.unlock();
 			return true;
 		}
