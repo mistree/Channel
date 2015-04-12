@@ -1,99 +1,117 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
-#include <queue>
+#include <atomic>
 #include <mutex>
-#include <condition_variable>
 
 namespace Dasein
 {
 	template<typename Item>
-	class Channel {
+	class Channel
+	{
 	private:
-		std::queue<Item> Buffer;
-		std::mutex Locker;
-		std::condition_variable Signal;
-		bool mClosed;
+		const int MaxPointer;
+		Item* Buffer;
+		std::atomic<int> RPointer = 0;
+		std::atomic<int> WPointer = 0;
+		std::atomic<bool> LastOperation = true; // true read, false write
+		std::mutex Reading;
+		std::mutex Writing;
+
 	public:
-		Channel() : mClosed(false) {};
-
-		void Close()
+		Channel(int Size): MaxPointer(Size - 1)
 		{
-			std::unique_lock<std::mutex> lock(Locker);
-			mClosed = true;
+			Buffer = new Item[Size + 1];
+		};
+		~Channel()
+		{
+			delete[] Buffer;
 		}
 
-		bool Closed()
+		bool Full()
 		{
-			return mClosed;
+			return (RPointer == WPointer && !LastOperation);
 		}
 
-		// blockint function
+		bool Empty()
+		{
+			return (RPointer == WPointer && LastOperation);
+		}
+
+		// non-blocking calls
+		friend bool operator <= (Item& Out, Channel<Item>& Ch)
+		{
+			if (Ch.RPointer == Ch.WPointer && Ch.LastOperation) return false;
+			if (!Ch.Reading.try_lock())
+				return false;
+			Ch.LastOperation = true;
+			Out = Ch.Buffer[Ch.RPointer];
+			Ch.RPointer = (Ch.RPointer + 1 == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
+			Ch.Reading.unlock();
+			return true;
+		}
+
+		friend bool operator <= (Channel<Item>& Ch, const Item& In)
+		{
+			if (Ch.RPointer == Ch.WPointer && !Ch.LastOperation) return false;
+			if (!Ch.Writing.try_lock())
+				return false;
+			Ch.LastOperation = false;
+			Ch.Buffer[Ch.WPointer] = In;
+			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.Writing.unlock();
+			return true;
+		}
+
+		friend bool operator <= (Channel<Item>& Ch, const Item&& In)
+		{
+			if (Ch.RPointer == Ch.WPointer && !Ch.LastOperation) return false;
+			if (!Ch.Writing.try_lock())
+				return false;
+			Ch.LastOperation = false;
+			Ch.Buffer[Ch.WPointer] = In;
+			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.Writing.unlock();
+			return true;
+		}
+
+		// blocking calls
 		friend bool operator << (Item& Out, Channel<Item>& Ch)
 		{
-			std::unique_lock<std::mutex> lock(Ch.Locker);
-			Ch.Signal.wait(lock, [&](){ return !Ch.Buffer.empty(); });
-			if (Ch.mClosed) throw std::logic_error("Channel already closed");
-			if (Ch.Buffer.empty())return false;
-			Out = Ch.Buffer.front();
-			Ch.Buffer.pop();
+			if (Ch.RPointer == Ch.WPointer && Ch.LastOperation) return false;
+			while (!Ch.Reading.try_lock());
+
+			Ch.LastOperation = true;
+			Out = Ch.Buffer[Ch.RPointer];
+			Ch.RPointer = (Ch.RPointer + 1 == Ch.MaxPointer) ? 0 : Ch.RPointer + 1;
+			Ch.Reading.unlock();
 			return true;
 		}
 
-		// pass by reference
 		friend bool operator << (Channel<Item>& Ch, const Item& In)
 		{
-			std::unique_lock<std::mutex> lock(Ch.Locker);
-			if (Ch.mClosed) throw std::logic_error("Channel already closed");
-			Ch.Buffer.push(In);
-			Ch.Signal.notify_one();
+			if (Ch.RPointer == Ch.WPointer && !Ch.LastOperation) return false;
+			while (!Ch.Writing.try_lock());
+
+			Ch.LastOperation = false;
+			Ch.Buffer[Ch.WPointer] = In;
+			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.Writing.unlock();
 			return true;
 		}
 
-		// pass by value
 		friend bool operator << (Channel<Item>& Ch, const Item&& In)
 		{
-			std::unique_lock<std::mutex> lock(Ch.Locker);
-			if (Ch.mClosed) throw std::logic_error("Channel already closed");
-			Ch.Buffer.push(In);
-			Ch.Signal.notify_one();
+			if (Ch.RPointer == Ch.WPointer && !Ch.LastOperation) return false;
+			while (!Ch.Writing.try_lock());
+
+			Ch.LastOperation = false;
+			Ch.Buffer[Ch.WPointer] = In;
+			Ch.WPointer = (Ch.WPointer + 1 == Ch.MaxPointer) ? 0 : Ch.WPointer + 1;
+			Ch.Writing.unlock();
 			return true;
 		}
 
-		// non-blocking function
-		friend bool operator >> (Channel<Item>& Ch, Item& Out)
-		{
-			std::unique_lock<std::mutex> lock(Ch.Locker, defer_lock);
-			if (!lock.try_lock())return false;
-			if (Ch.mClosed) throw std::logic_error("Channel already closed");
-			if (Ch.Buffer.empty())
-				return false;
-			Out = Ch.Buffer.front();
-			Ch.Buffer.pop();
-			return true;
-		}
-
-		// pass by reference
-		friend bool operator >> (const Item& In, Channel<Item>& Ch)
-		{
-			std::unique_lock<std::mutex> lock(Ch.Locker, defer_lock);
-			if (!lock.try_lock())return false;
-			if (Ch.mClosed) throw std::logic_error("Channel already closed");
-			Ch.Buffer.push(In);
-			Ch.Signal.notify_one();
-			return true;
-		}
-
-		// pass by value
-		friend bool operator >> (const Item&& In, Channel<Item>& Ch)
-		{
-			std::unique_lock<std::mutex> lock(Ch.Locker, defer_lock);
-			if (!lock.try_lock())return false;
-			if (Ch.mClosed) throw std::logic_error("Channel already closed");
-			Ch.Buffer.push(In);
-			Ch.Signal.notify_one();
-			return true;
-		}
 	};
 }
 
