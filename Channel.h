@@ -79,37 +79,19 @@ namespace Dasein
 		// blocking calls
 		friend bool operator << (Item& Out, Channel<Item>& Ch)
 		{
-			// return if empty
-			if (Ch.Elements == 0) return false;
-			while (!Ch.Reading.try_lock());
-			Out = Ch.Buffer[Ch.RPointer];
-			Ch.RPointer = (Ch.RPointer + 1)&Ch.MaxPointer;
-			Ch.Reading.unlock();
-			Ch.Elements--;
+			while (!(Out <= Ch));
 			return true;
 		}
 
 		friend bool operator << (Channel<Item>& Ch, const Item& In)
 		{
-			// return if full
-			if (Ch.Elements == Ch.Size) return false;
-			while (!Ch.Writing.try_lock());
-			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
-			Ch.Writing.unlock();
-			Ch.Elements++;
+			while (!(Ch <= In));
 			return true;
 		}
 
 		friend bool operator << (Channel<Item>& Ch, const Item&& In)
 		{
-			// return if full
-			if (Ch.Elements == Ch.Size) return false;
-			while (!Ch.Writing.try_lock());
-			Ch.Buffer[Ch.WPointer] = In;
-			Ch.WPointer = (Ch.WPointer + 1)&Ch.MaxPointer;
-			Ch.Writing.unlock();
-			Ch.Elements++;
+			while (!(Ch <= In));
 			return true;
 		}
 
